@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "gen-ai-demos"
+version = "0.1.0"
+description = ""
+authors = ["Vicente Reig Rincon de Arellano <hey@vicente.services>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+dspy = "^2.5.43"
+python-dotenv = "^1.0.1"
+
+
+[tool.poetry.group.dev.dependencies]
+jupyterlab = "^4.3.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
