@@ -139,12 +139,8 @@ class Thought:
 
 # The main AGoT implementation
 class AdaptiveGraphOfThoughts(dspy.Module):
-    def __init__(self, lm=None, max_depth=1, max_layers=3, max_nodes=3):
+    def __init__(self, max_depth=1, max_layers=3, max_nodes=3, token_budget=float('inf')):
         super().__init__()
-
-        # Set language model
-        if lm:
-            dspy.settings.configure(lm=lm)
 
         # Initialize the DSPy modules
         self.t0 = T0()
@@ -157,6 +153,7 @@ class AdaptiveGraphOfThoughts(dspy.Module):
         self.max_depth = max_depth
         self.max_layers = max_layers
         self.max_nodes = max_nodes
+        self.token_budget = token_budget
 
     def _format_graph_for_context(self, G):
         """Format the graph state as a string for context in prompts."""
@@ -461,9 +458,29 @@ class AdaptiveGraphOfThoughts(dspy.Module):
         return final_answer, G
 
     def _should_terminate(self, G):
-        """Check if we should terminate early based on the graph state."""
-        # This is a simple implementation - could be made more sophisticated
-        # For example, check if a high-quality answer has already been found
+        """Check if we should terminate early based on the graph state.
+
+        Terminate if:
+          - Any thought in the graph has produced an answer (i.e. a non-empty answer exists).
+          - The estimated token usage exceeds the token budget.
+        """
+        # Check if any thought has a non-empty answer.
+        for node_id, data in G.nodes(data=True):
+            thought = data['data']
+            if thought.answer and len(thought.answer.strip()) > 0:
+                print(f"[DEBUG] Termination: Thought {node_id} has produced an answer.")
+                return True
+
+        # Estimate token usage based on the content length of all thoughts.
+        # Here we assume an approximate conversion (e.g. 4 characters per token).
+        total_chars = sum(len(data['data'].content) for _, data in G.nodes(data=True))
+        token_usage = total_chars / 4  # approximate token count
+
+        print(f"[DEBUG] Estimated token usage: {token_usage} tokens (Budget: {self.token_budget} tokens).")
+        if token_usage >= self.token_budget:
+            print(f"[DEBUG] Termination: Token budget reached or exceeded.")
+            return True
+
         return False
 
     def forward(self, query):
